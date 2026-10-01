@@ -1,27 +1,28 @@
-post_build:
-  commands:
-    - docker push 516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:$COMMIT_HASH
-    - docker push 516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:latest
-    - echo "Waiting for Inspector scan..."
-    - sleep 60
-    - |
-      CRITICAL=$(aws inspector2 list-findings \
-        --filter-criteria '{"ecrImageTags":[{"comparison":"EQUALS","value":"'"$COMMIT_HASH"'"}],"severity":[{"comparison":"EQUALS","value":"CRITICAL"}]}' \
-        --query 'length(findings)' \
-        --output text 2>/dev/null || echo "0")
-      HIGH=$(aws inspector2 list-findings \
-        --filter-criteria '{"ecrImageTags":[{"comparison":"EQUALS","value":"'"$COMMIT_HASH"'"}],"severity":[{"comparison":"EQUALS","value":"HIGH"}]}' \
-        --query 'length(findings)' \
-        --output text 2>/dev/null || echo "0")
-      echo "CRITICAL findings: $CRITICAL"
-      echo "HIGH findings: $HIGH"
-      if [ "$CRITICAL" -gt "0" ]; then
-        echo "FAILED: $CRITICAL CRITICAL vulnerabilities found"
-        exit 1
-      fi
-      if [ "$HIGH" -gt "0" ]; then
-        echo "FAILED: $HIGH HIGH vulnerabilities found"
-        exit 1
-      fi
-      echo "Scan gate passed"
-    - printf '[{"name":"Zoyo-Dev-Frontendinspect-Container","imageUri":"516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:%s"}]' $COMMIT_HASH > imagedefinitions.json
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 516027198635.dkr.ecr.us-east-1.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - docker build -t zoyo-inspect .
+      - docker tag zoyo-inspect:latest 516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:$COMMIT_HASH
+      - docker tag zoyo-inspect:latest 516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:latest
+  post_build:
+    commands:
+      - docker push 516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:$COMMIT_HASH
+      - docker push 516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:latest
+      - echo "Waiting for Inspector scan..."
+      - sleep 60
+      - CRITICAL=$(aws inspector2 list-findings --filter-criteria '{"ecrImageTags":[{"comparison":"EQUALS","value":"'"$COMMIT_HASH"'"}],"severity":[{"comparison":"EQUALS","value":"CRITICAL"}]}' --query 'length(findings)' --output text 2>/dev/null || echo "0")
+      - HIGH=$(aws inspector2 list-findings --filter-criteria '{"ecrImageTags":[{"comparison":"EQUALS","value":"'"$COMMIT_HASH"'"}],"severity":[{"comparison":"EQUALS","value":"HIGH"}]}' --query 'length(findings)' --output text 2>/dev/null || echo "0")
+      - echo "CRITICAL findings $CRITICAL"
+      - echo "HIGH findings $HIGH"
+      - if [ "$CRITICAL" -gt "0" ]; then echo "FAILED $CRITICAL CRITICAL vulnerabilities found"; exit 1; fi
+      - if [ "$HIGH" -gt "0" ]; then echo "FAILED $HIGH HIGH vulnerabilities found"; exit 1; fi
+      - echo "Scan gate passed"
+      - printf '[{"name":"Zoyo-Dev-Frontendinspect-Container","imageUri":"516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:%s"}]' $COMMIT_HASH > imagedefinitions.json
+artifacts:
+  files:
+    - imagedefinitions.json
