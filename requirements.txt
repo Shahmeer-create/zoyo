@@ -1,0 +1,5 @@
+flask==3.0.3
+aws-xray-sdk==2.14.0
+boto3==1.34.69
+Werkzeug==3.0.3
+gunicorn==22.0.0
