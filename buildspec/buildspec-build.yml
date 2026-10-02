@@ -22,7 +22,7 @@ phases:
       - if [ "$CRITICAL" -gt "0" ]; then echo "FAILED $CRITICAL CRITICAL vulnerabilities found"; exit 1; fi
       - if [ "$HIGH" -gt "0" ]; then echo "FAILED $HIGH HIGH vulnerabilities found"; exit 1; fi
       - echo "Scan gate passed"
-      - printf '[{"name":"Zoyo-Dev-Frontendinspect-Container","imageUri":"516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:%s"}]' $COMMIT_HASH > imagedefinitions.json
+      - printf '[{"name":"zoyo-inspect","imageUri":"516027198635.dkr.ecr.us-east-1.amazonaws.com/zoyo-inspect:%s"}]' $COMMIT_HASH > imagedefinitions.json
 artifacts:
   files:
     - imagedefinitions.json
